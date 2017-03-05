@@ -4,25 +4,34 @@ import os
 import shutil
 import sys
 import re
+from time import sleep
 from bs4 import BeautifulSoup as bs
+import psutil
 import requests
 import subprocess
+import signal
 
-l = 'https://aur.archlinux.org/packages/plex-media-server-plexpass/'
+__doc__ = 'Script has to be run relatively to Plex directory'
+LINK = 'https://aur.archlinux.org/packages/plex-media-server-plexpass/'
+SLEEP = 10
+
 
 def download_file(url):
     local_filename = '/tmp/' + url.split('/')[-1]
+    if os.path.exists(local_filename):
+        print(local_filename + "Already exists")
+        return local_filename
     # NOTE the stream=True parameter
     r = requests.get(url, stream=True)
     with open(local_filename, 'wb') as f:
         for chunk in r.iter_content(chunk_size=1024):
-            if chunk: # filter out keep-alive new chunks
+            if chunk:  # filter out keep-alive new chunks
                 f.write(chunk)
-                #f.flush() commented by recommendation from J.F.Sebastian
+                # f.flush() commented by recommendation from J.F.Sebastian
     return local_filename
 
 
-def convert_file(f):
+def extract(f):
     try:
         command = 'rpm2cpio /tmp/{} | cpio -idmv'.format(f)
         print("Running " + command)
@@ -31,20 +40,56 @@ def convert_file(f):
         print(str(err))
         sys.exit(1)
 
-def rename_file(ff):
+
+def kill_plex(process_gid):
+    """ Retrieves the process group of Plex and sends TERM signal """
+    os.killpg(int(process_gid), signal.SIGTERM)
+    print("SIGTERM sent to Plex process group ID")
+    print("Waiting {} seconds".format(SLEEP))
+
+
+def rename(ff):
     f = '.'.join(ff.split('.')[:-2])
     print("Renaming relative dir usr/lib/plexmediaserver to " + f)
     try:
-        os.rename('usr/lib/plexmediaserver',f)
-        print('removing usr')
-        shutil.rmtree('usr')
-        print('removing etc')
-        shutil.rmtree('etc')
-        print('removing lib')
-        shutil.rmtree('lib')
+        os.rename('usr/lib/plexmediaserver', f)
     except OSError as err:
         print(str(err))
         sys.exit(2)
+
+
+def symlink(f):
+    """ symlinks new version to Plex """
+    file_name = '.'.join(f.split('.')[:-2])
+    link_name = 'Plex'
+    print("Symlinking {} to {}".format(file_name, link_name))
+    os.remove(link_name)
+    os.symlink(file_name, link_name)
+
+
+def remove():
+    """ Removes relative files extracted by cpio"""
+    print('removing usr')
+    shutil.rmtree('usr')
+    print('removing etc')
+    shutil.rmtree('etc')
+    print('removing lib')
+    shutil.rmtree('lib')
+
+
+def extract_link():
+    """ extracts link from aur page """
+    html = requests.get(LINK).content
+    soup = bs(html, 'html.parser')
+    for link in soup.find_all('a'):
+        match = re.search(r'^http.*x86_64.*rpm$', link.get('href'))
+        if match:
+            url = match.group()
+            file_name = url.split('/')[-1]
+            if check_exists(file_name):
+                print("Downloading to /tmp/" + file_name)
+                download_file(url)
+    return file_name
 
 
 def check_exists(f):
@@ -57,17 +102,29 @@ def check_exists(f):
     else:
         return True
 
-if __name__ == '__main__':
-    html = requests.get(l).content
-    soup = bs(html, 'html.parser')
-    for link in soup.find_all('a'):
-            match = re.search(r'^http.*x86_64.*rpm$', link.get('href'))
-            if match:
-                url = match.group()
-                f = url.split('/')[-1]
-                if check_exists(f):
-                    print("Downloading to /tmp/" + f  )
-                    download_file(url)
 
-    convert_file(f)
-    rename_file(f)
+def get_plex_pgid():
+    try:
+        for proc in psutil.process_iter():
+            print(proc.name())
+            if proc.name() == "Plex Media Server":
+                process_gid = os.getpgid(int(proc.pid))
+                return process_gid
+    except psutil.ZombieProcess:
+        pass
+
+if __name__ == '__main__':
+    file_name = extract_link()
+    extract(file_name)
+    rename(file_name)
+    remove()
+
+    while True:
+        process_gid = get_plex_pgid()
+        if process_gid:
+            kill_plex(process_gid)
+            sleep(SLEEP)
+        else:
+            symlink(file_name)
+            print("No Plex pid quitting")
+            break
