@@ -6,7 +6,7 @@ import sys
 import re
 from time import sleep
 from bs4 import BeautifulSoup as bs
-import psutil
+#import psutil
 import requests
 import subprocess
 import signal
@@ -62,8 +62,11 @@ def symlink(f):
     """ symlinks new version to Plex """
     file_name = '.'.join(f.split('.')[:-2])
     link_name = 'Plex'
+    try:
+        os.remove(link_name)
+    except FileNotFoundError as err:
+        print(str(err))
     print("Symlinking {} to {}".format(file_name, link_name))
-    os.remove(link_name)
     os.symlink(file_name, link_name)
 
 
@@ -78,7 +81,7 @@ def remove():
 
 
 def extract_link():
-    """ extracts link from aur page """
+    """ extracts link from AUR page """
     html = requests.get(LINK).content
     soup = bs(html, 'html.parser')
     for link in soup.find_all('a'):
@@ -104,13 +107,23 @@ def check_exists(f):
 
 
 def get_plex_pgid():
+    # psutil has to many issues depending on version used switch to pgrep 
+    #	and has C based extensions which is a pain sometimes
+    #"""
+    # try:
+    #     for proc in psutil.process_iter():
+    #         if proc.name == "Plex Media Server":
+    #             process_gid = os.getpgid(int(proc.pid))
+    #             return process_gid
+    # except psutil.ZombieProcess:
+    #     pass
     try:
-        for proc in psutil.process_iter():
-            if proc.name() == "Plex Media Server":
-                process_gid = os.getpgid(int(proc.pid))
-                return process_gid
-    except psutil.ZombieProcess:
-        pass
+        pid = subprocess.check_output('pgrep Plex', shell=True)
+        process_gid = os.getpgid(int(pid))
+        return process_gid
+    except subprocess.CalledProcessError as err:
+        print(str(err))
+
 
 def main():
     file_name = extract_link()
