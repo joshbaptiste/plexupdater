@@ -112,7 +112,7 @@ def get_plex_pgid():
     except psutil.ZombieProcess:
         pass
 
-if __name__ == '__main__':
+def main():
     file_name = extract_link()
     extract(file_name)
     rename(file_name)
@@ -127,3 +127,6 @@ if __name__ == '__main__':
             symlink(file_name)
             print("No Plex pid quitting")
             break
+
+if __name__ == '__main__':
+    main()
