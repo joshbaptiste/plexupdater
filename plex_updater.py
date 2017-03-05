@@ -118,7 +118,7 @@ def get_plex_pgid():
     # except psutil.ZombieProcess:
     #     pass
     try:
-        pid = subprocess.check_output('pgrep Plex', shell=True)
+        pid = subprocess.check_output("pgrep -f 'Plex Media Server$'", shell=True)
         process_gid = os.getpgid(int(pid))
         return process_gid
     except subprocess.CalledProcessError as err:
