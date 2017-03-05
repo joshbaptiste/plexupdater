@@ -11,7 +11,7 @@ import requests
 import subprocess
 import signal
 
-__doc__ = 'Script has to be run relatively to Plex directory'
+__doc__ = 'Script has to be run relative to the Plex directory and as running user or sudo'
 LINK = 'https://aur.archlinux.org/packages/plex-media-server-plexpass/'
 SLEEP = 10
 
@@ -106,7 +106,6 @@ def check_exists(f):
 def get_plex_pgid():
     try:
         for proc in psutil.process_iter():
-            print(proc.name())
             if proc.name() == "Plex Media Server":
                 process_gid = os.getpgid(int(proc.pid))
                 return process_gid
