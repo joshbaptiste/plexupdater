@@ -14,10 +14,11 @@ import signal
 __doc__ = 'Script has to be run relative to the Plex directory and as running user or sudo'
 LINK = 'https://aur.archlinux.org/packages/plex-media-server-plexpass/'
 SLEEP = 10
+DDIR = '/tmp'
 
 
 def download_file(url):
-    local_filename = '/tmp/' + url.split('/')[-1]
+    local_filename = DDIR + '/' + url.split('/')[-1]
     if os.path.exists(local_filename):
         print(local_filename + "Already exists")
         return local_filename
@@ -70,14 +71,17 @@ def symlink(f):
     os.symlink(file_name, link_name)
 
 
-def remove():
+def remove(f=None):
     """ Removes relative files extracted by cpio"""
-    print('removing usr')
-    shutil.rmtree('usr')
-    print('removing etc')
-    shutil.rmtree('etc')
-    print('removing lib')
-    shutil.rmtree('lib')
+    if f:
+        os.remove(DDIR + '/' + f)
+    else:
+        print('removing usr')
+        shutil.rmtree('usr')
+        print('removing etc')
+        shutil.rmtree('etc')
+        print('removing lib')
+        shutil.rmtree('lib')
 
 
 def extract_link():
@@ -139,7 +143,12 @@ def main():
         else:
             symlink(file_name)
             print("No Plex pid quitting")
+            print("Removing %s in 10 seconds" % file_name)
+            #remove rpm file
+            sleep(SLEEP)
+            remove(file_name)
             break
+
 
 if __name__ == '__main__':
     main()
