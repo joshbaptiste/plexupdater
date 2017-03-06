@@ -84,7 +84,7 @@ def remove(f=None):
         shutil.rmtree('lib')
 
 
-def extract_link():
+def get_filename_from_link():
     """ extracts link from AUR page """
     html = requests.get(LINK).content
     soup = bs(html, 'html.parser')
@@ -92,14 +92,17 @@ def extract_link():
         match = re.search(r'^http.*x86_64.*rpm$', link.get('href'))
         if match:
             url = match.group()
-            file_name = url.split('/')[-1]
-            if check_exists(file_name):
-                print("Downloading to /tmp/" + file_name)
-                download_file(url)
-    return file_name
+            rpm_file_name = url.split('/')[-1]
+            return rpm_file_name
 
 
-def check_exists(f):
+def get_rpm_file_from_url(url, rpm_file_name):
+    if check_exists(rpm_file_name):
+        print("Downloading to /tmp/" + rpm_file_name)
+        download_file(url)
+
+
+def check_file_exists(f):
     """ check if plexmediaserver-1.4.3.3433-03e4cfa35 exists """
     _f = '.'.join(f.split('.')[:-2])
     print("Checking if {} exists".format(_f))
@@ -128,9 +131,28 @@ def get_plex_pgid():
     except subprocess.CalledProcessError as err:
         print(str(err))
 
+def get_prev_filename():
+    prev_filename = None
+    try:
+        prev_filename = os.readlink('Plex')
+    except FileNotFoundError as err:
+        print(str(err))
+
+    return prev_filename
+
+
+def symlink_prev_file(prev_filename):
+    if not os.path.exists('Plex.old'):
+        print('Symlinking previous file {} to Plex.old'.format(prev_filename))
+        os.symlink('Plex.old', prev_filename)
+
+
+def remove_prev_file():
+   pass
 
 def main():
-    file_name = extract_link()
+    rpm_file_name = get_rpm_file_from_url()
+    prev_dirname = get_prev_dirname()
     extract(file_name)
     rename(file_name)
     remove()
@@ -147,6 +169,8 @@ def main():
             #remove rpm file
             sleep(SLEEP)
             remove(file_name)
+            if prev_filename:
+                symlink_prev_file(prev_filename)
             break
 
 
