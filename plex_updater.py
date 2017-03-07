@@ -17,24 +17,24 @@ SLEEP = 10
 DDIR = '/tmp'
 
 
-def download_file(url):
-    local_filename = DDIR + '/' + url.split('/')[-1]
-    if os.path.exists(local_filename):
-        print(local_filename + "Already exists")
-        return local_filename
+def download_rpm_file(url, rpm_file):
+    if os.path.exists(rpm_file):
+        print(rpm_file + " Already exists")
+        return rpm_file
+    print("Downloading to " + rpm_file)
     # NOTE the stream=True parameter
     r = requests.get(url, stream=True)
-    with open(local_filename, 'wb') as f:
+    with open(rpm_file, 'wb') as f:
         for chunk in r.iter_content(chunk_size=1024):
             if chunk:  # filter out keep-alive new chunks
                 f.write(chunk)
                 # f.flush() commented by recommendation from J.F.Sebastian
-    return local_filename
+    return rpm_file
 
 
-def extract(f):
+def extract_rpm_file(f):
     try:
-        command = 'rpm2cpio /tmp/{} | cpio -idmv'.format(f)
+        command = 'rpm2cpio {} | cpio -idmv'.format(f)
         print("Running " + command)
         subprocess.check_output(command, shell=True)
     except subprocess.CalledProcessError as err:
@@ -49,32 +49,33 @@ def kill_plex(process_gid):
     print("Waiting {} seconds".format(SLEEP))
 
 
-def rename(ff):
-    f = '.'.join(ff.split('.')[:-2])
-    print("Renaming relative dir usr/lib/plexmediaserver to " + f)
+def rename_plex_dir(dirname):
+    """ renames plexmediaserver -> plexmediaserver-1.4.3.3433-03e4cfa35 """
+    print("Renaming relative dir usr/lib/plexmediaserver to " + dirname)
     try:
-        os.rename('usr/lib/plexmediaserver', f)
+        os.rename('usr/lib/plexmediaserver', dirname)
     except OSError as err:
         print(str(err))
         sys.exit(2)
 
 
-def symlink(f):
+def symlink_plex_dirname(dirname):
     """ symlinks new version to Plex """
-    file_name = '.'.join(f.split('.')[:-2])
     link_name = 'Plex'
     try:
+        # remove prev link
         os.remove(link_name)
     except FileNotFoundError as err:
         print(str(err))
-    print("Symlinking {} to {}".format(file_name, link_name))
-    os.symlink(file_name, link_name)
+    print("Symlinking {} to {}".format(dirname, link_name))
+    os.symlink(dirname, link_name)
 
 
-def remove(f=None):
-    """ Removes relative files extracted by cpio"""
+def remove_rpm_cpio_files(f=None):
+    """ Removes relative files extracted by cpio and rpm file later"""
     if f:
-        os.remove(DDIR + '/' + f)
+        print("Removing " + f)
+        #os.remove(DDIR + '/' + f)
     else:
         print('removing usr')
         shutil.rmtree('usr')
@@ -84,7 +85,7 @@ def remove(f=None):
         shutil.rmtree('lib')
 
 
-def get_filename_from_link():
+def get_filename_url():
     """ extracts link from AUR page """
     html = requests.get(LINK).content
     soup = bs(html, 'html.parser')
@@ -92,31 +93,23 @@ def get_filename_from_link():
         match = re.search(r'^http.*x86_64.*rpm$', link.get('href'))
         if match:
             url = match.group()
-            rpm_file_name = url.split('/')[-1]
-            return rpm_file_name
+            return url
 
 
-def get_rpm_file_from_url(url, rpm_file_name):
-    if check_exists(rpm_file_name):
-        print("Downloading to /tmp/" + rpm_file_name)
-        download_file(url)
-
-
-def check_file_exists(f):
+def check_dir_exists(dirname):
     """ check if plexmediaserver-1.4.3.3433-03e4cfa35 exists """
-    _f = '.'.join(f.split('.')[:-2])
-    print("Checking if {} exists".format(_f))
-    if os.path.exists(_f):
+    print("Checking if {} exists".format(dirname))
+    if os.path.exists(dirname):
         print("Exiting dir already exists")
         sys.exit(3)
     else:
-        return True
+        return False
 
 
 def get_plex_pgid():
-    # psutil has to many issues depending on version used switch to pgrep 
-    #	and has C based extensions which is a pain sometimes
-    #"""
+    # psutil has too many issues depending on the version used,
+    # and has C baseddd extensions which is a pain sometimes
+    # switched to pgrep for now
     # try:
     #     for proc in psutil.process_iter():
     #         if proc.name == "Plex Media Server":
@@ -125,37 +118,51 @@ def get_plex_pgid():
     # except psutil.ZombieProcess:
     #     pass
     try:
-        pid = subprocess.check_output("pgrep -f 'Plex Media Server$'", shell=True)
+        pid = subprocess.check_output(
+            "pgrep -f 'Plex Media Server$'", shell=True)
         process_gid = os.getpgid(int(pid))
         return process_gid
     except subprocess.CalledProcessError as err:
         print(str(err))
 
-def get_prev_filename():
-    prev_filename = None
+
+def get_prev_dirname(dirname):
+    prev_dirname = None
     try:
-        prev_filename = os.readlink('Plex')
+        prev_dirname = os.readlink('Plex')
     except FileNotFoundError as err:
         print(str(err))
+    # if they are equal this is the only dir
+    if dirname == prev_dirname:
+        prev_dirname = None
+    return prev_dirname
 
-    return prev_filename
 
-
-def symlink_prev_file(prev_filename):
+def symlink_prev_file(prev_dirname):
     if not os.path.exists('Plex.old'):
-        print('Symlinking previous file {} to Plex.old'.format(prev_filename))
-        os.symlink('Plex.old', prev_filename)
+        print('Symlinking previous file {} to Plex.old'.format(prev_dirname))
+        os.symlink(prev_dirname, 'Plex.old')
 
 
-def remove_prev_file():
-   pass
+def remove_old_dir():
+    symlink = 'Plex.old'
+    if os.path.exists(symlink):
+        old_plex_dir = os.readlink(symlink)
+        print("Removing old Plex dir {}".format(old_plex_dir))
+        shutil.rmtree(old_plex_dir)
+        os.remove(symlink)
+
 
 def main():
-    rpm_file_name = get_rpm_file_from_url()
-    prev_dirname = get_prev_dirname()
-    extract(file_name)
-    rename(file_name)
-    remove()
+    url = get_filename_url()
+    rpm_file = DDIR + '/' + url.split('/')[-1]
+    dirname = os.path.basename('.'.join(rpm_file.split('.')[:-2]))
+    check_dir_exists(dirname)
+    download_rpm_file(url, rpm_file)
+    prev_dirname = get_prev_dirname(dirname)
+    extract_rpm_file(rpm_file)
+    rename_plex_dir(dirname)
+    remove_rpm_cpio_files()
 
     while True:
         process_gid = get_plex_pgid()
@@ -163,14 +170,15 @@ def main():
             kill_plex(process_gid)
             sleep(SLEEP)
         else:
-            symlink(file_name)
+            symlink_plex_dirname(dirname)
             print("No Plex pid quitting")
-            print("Removing %s in 10 seconds" % file_name)
-            #remove rpm file
+            print("Removing %s in 10 seconds" % rpm_file)
+            # remove rpm file
             sleep(SLEEP)
-            remove(file_name)
-            if prev_filename:
-                symlink_prev_file(prev_filename)
+            remove_rpm_cpio_files(rpm_file)
+            remove_old_dir()
+            if prev_dirname:
+                symlink_prev_file(prev_dirname)
             break
 
 
