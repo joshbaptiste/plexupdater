@@ -101,7 +101,7 @@ def check_dir_exists(dirname):
     print("Checking if {} exists".format(dirname))
     if os.path.exists(dirname):
         print("Exiting dir already exists")
-        sys.exit(3)
+        sys.exit(0)
     else:
         return False
 
