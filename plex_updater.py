@@ -75,7 +75,7 @@ def remove_rpm_cpio_files(f=None):
     """ Removes relative files extracted by cpio and rpm file later"""
     if f:
         print("Removing " + f)
-        #os.remove(DDIR + '/' + f)
+        os.remove(DDIR + '/' + f)
     else:
         print('removing usr')
         shutil.rmtree('usr')
