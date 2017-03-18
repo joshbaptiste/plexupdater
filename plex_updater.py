@@ -34,7 +34,7 @@ def download_rpm_file(url, rpm_file):
 
 def extract_rpm_file(f):
     try:
-        command = 'rpm2cpio {} | cpio -idmv usr/lib/plexmediaserver'.format(f)
+        command = "rpm2cpio {} | cpio -idmv './usr/lib/plexmediaserver/*' ".format(f)
         print("Running " + command)
         subprocess.check_output(command, shell=True)
     except subprocess.CalledProcessError as err:
