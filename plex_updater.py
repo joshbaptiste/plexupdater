@@ -42,9 +42,13 @@ def extract_rpm_file(f):
         sys.exit(1)
 
 
-def kill_plex(process_gid):
+def kill_plex(process_gid, sigkill=False):
     """ Retrieves the process group of Plex and sends TERM signal """
-    os.killpg(int(process_gid), signal.SIGTERM)
+    if sigkill:
+        print("SIGKILL sent to Plex process group ID")
+        os.killpg(int(process_gid), signal.SIGKILL)
+    else:
+        os.killpg(int(process_gid), signal.SIGTERM)
     print("SIGTERM sent to Plex process group ID")
     print("Waiting {} seconds".format(SLEEP))
 
@@ -162,8 +166,13 @@ def main():
 
     while True:
         process_gid = get_plex_pgid()
+        sigterm_count = 0
         if process_gid:
-            kill_plex(process_gid)
+            if sigterm_count >= 3:
+                kill_plex(process_gid, sigkill=True)
+            else:
+                kill_plex(process_gid)
+                sigterm_count += 1
             sleep(SLEEP)
         else:
             symlink_plex_dirname(dirname)
