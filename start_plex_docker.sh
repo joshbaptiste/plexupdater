@@ -2,7 +2,7 @@
 SCRIPTPATH=/pvr/Plex
 export LD_LIBRARY_PATH="/usr/local/lib/compat:${SCRIPTPATH}:$SCRIPTPATH/lib"
 export PLEX_MEDIA_SERVER_HOME="${SCRIPTPATH}"
-export LANG="en_US.UTF-8"
+#export LANG="en_US.UTF-8"
 # default script for Plex Media Server
 
 # the number of plugins that can run at the same time
