@@ -12,10 +12,10 @@ export PLEX_MEDIA_SERVER_MAX_PLUGIN_PROCS=5
 export PLEX_MEDIA_SERVER_MAX_STACK_SIZE=3000
 
 # where the mediaserver should store the transcodes
-export PLEX_MEDIA_SERVER_TMPDIR="/mnt/superfree-cache/plextmp"
+export PLEX_MEDIA_SERVER_TMPDIR="/mnt/plextmp"
 
 # uncomment to set it to something else
-export PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR="/mnt/superfree-cache/plexmediaserver"
+export PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR="/mnt/plexmediaserver"
 
 # the user that PMS should run as, defaults to 'plex'
 # note that if you change this you might need to move
