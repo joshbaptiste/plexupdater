@@ -20,16 +20,16 @@ function download_rpm_file(){
 
 
 function extract_rpm_file(){
-        rpm2cpio {} | cpio -idmv './usr/lib/plexmediaserver/*' ".format(f)
-        print("Running " + command)
-        subprocess.check_output(command, shell=True)
-    except subprocess.CalledProcessError as err:
-        print(str(err))
-        sys.exit(1)
+        echo "Running  $command"
+        if !    rpm2cpio $1 | cpio -idmv './usr/lib/plexmediaserver/*'
+        then
+                exit 1
+        fi
+    }
 
 
-def kill_plex(process_gid, sigkill=False):
-    """ Retrieves the process group of Plex and sends TERM signal """
+function kill_plex(){
+#    """ Retrieves the process group of Plex and sends TERM signal """
     if sigkill:
         print("SIGKILL sent to Plex process group ID")
         os.killpg(int(process_gid), signal.SIGKILL)
@@ -37,7 +37,7 @@ def kill_plex(process_gid, sigkill=False):
         os.killpg(int(process_gid), signal.SIGTERM)
     print("SIGTERM sent to Plex process group ID")
     print("Waiting {} seconds".format(SLEEP))
-
+}
 
 def rename_plex_dir(dirname):
     """ renames plexmediaserver -> plexmediaserver-1.4.3.3433-03e4cfa35 """
