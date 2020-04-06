@@ -29,5 +29,4 @@ USER pvr
 RUN mkdir -- plexmediaserver-1.4.3.3433-03e4cfa35 \
 	&& ln -s -- plexmediaserver-1.4.3.3433-03e4cfa35 Plex \
 	&& python3 /pvr/plex_updater.py
-CMD ["bash", "/pvr/start_plex_docker.sh"]
-
+ENTRYPOINT ["bash", "/pvr/start_plex_docker.sh"]

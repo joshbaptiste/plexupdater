@@ -25,6 +25,8 @@ export PLEX_MEDIA_SERVER_USER=$USER
 export PYTHONHOME="${SCRIPTPATH}/Resources/Python"
 export PATH="${SCRIPTPATH}/Resources/Python/bin:${PATH}"
 
+pidfile="/mnt/plexmediaserver/Plex Media Server/plexmediaserver.pid"
+[[ -f $pidfile ]] && rm "$pidfile"
 #change these parameters in /etc/default/plexmediaserver
 ulimit -s $PLEX_MEDIA_SERVER_MAX_STACK_SIZE
 /pvr/Plex/Plex\ Media\ Server
